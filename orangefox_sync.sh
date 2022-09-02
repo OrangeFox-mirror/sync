@@ -163,7 +163,7 @@ Process_CMD_Line() {
              # path
                 -p | -P | --path)
                         shift;
-                        [ -n "$1" ] && MANIFEST_DIR=$1;
+                        [ -n "$1" ] && MANIFEST_DIR=$(readlink -f $1);
                 ;;
              # branch
                 -b | -B | --branch)
@@ -220,7 +220,7 @@ update_environment() {
   PATCH_FILE="$BASE_DIR/patches/patch-manifest-$FOX_DEF_BRANCH.diff";
 
   # the directory in which the patch of the manifest will be executed
-  MANIFEST_BUILD_DIR="$MANIFEST_DIR/build";
+  MANIFEST_BUILD_DIR="$(readlink -f $MANIFEST_DIR/build)";
 }
 
 # init the script, ensure we have the patch file, and create the manifest directory
