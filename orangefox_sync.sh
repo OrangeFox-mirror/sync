@@ -4,8 +4,8 @@
 # - Syncs the relevant twrp minimal manifest, and patches it for building OrangeFox
 # - Pulls in the OrangeFox recovery sources and vendor tree
 # - Author:  DarthJabba9
-# - Version: generic:016
-# - Date:    31 May 2023
+# - Version: generic:017
+# - Date:    22 October 2023
 #
 # 	* Changes for v007 (20220430)  - make it clear that fox_12.1 is not ready
 # 	* Changes for v008 (20220708)  - fox_12.1 is now ready
@@ -17,11 +17,12 @@
 # 	* Changes for v014 (20220908)  - don't apply the system vold patch: it is no longer needed
 # 	* Changes for v015 (20221206)  - remove support for manifests earlier than 11.0; only fox_11.0 and fox_12.1 are now officially supported
 # 	* Changes for v016 (20230531)  - dispense with the submodules stuff
+#  * Changes for v017 (20231022)  - add github mirror support and use github by default
 #
 # ***************************************************************************************
 
 # the version number of this script
-SCRIPT_VERSION="20230531";
+SCRIPT_VERSION="20231022";
 
 # the base version of the current OrangeFox
 FOX_BASE_VERSION="R11.1";
@@ -64,6 +65,7 @@ help_screen() {
   echo "    -h, -H, --help 			print this help screen and quit";
   echo "    -d, -D, --debug 			debug mode: print each command being executed";
   echo "    -s, -S, --ssh <'0' or '1'>		set 'USE_SSH' to '0' or '1'";
+  echo "    --source <'github' or 'gitlab'>     set source for download sources";
   echo "    -p, -P, --path <absolute_path>	sync the minimal manifest into the directory '<absolute_path>'";
   echo "    -b, -B, --branch <branch>		get the minimal manifest for '<branch>'";
   echo "    	'<branch>' must be one of the following branches:";
@@ -102,6 +104,17 @@ Process_CMD_Line() {
                 -s | -S | --ssh)
                         shift;
                         [ "$1" = "0" -o "$1" = "1" ] && USE_SSH=$1 || USE_SSH=0;
+                ;;
+             # source
+                --source)
+                        shift;
+                        if [ "$1" = "github" -o "$1" = "gitlab" ]; then 
+                            SOURCE=$1; 
+                        else 
+                            echo "Invalid source \"$1\". Read the help screen below.";
+                            echo "";
+                            help_screen;
+                        fi
                 ;;
              # path
                 -p | -P | --path)
@@ -225,10 +238,22 @@ clone_common() {
 clone_fox_recovery() {
 local URL="";
 local BRANCH=$FOX_BRANCH;
-   if [ "$USE_SSH" = "0" ]; then
-      URL="https://gitlab.com/OrangeFox/bootable/Recovery.git";
+local SOURCE=${SOURCE:-github};
+   if [ "$SOURCE" = "github" ]; then
+      if [ "$USE_SSH" = "0" ]; then
+         URL="https://github.com/OrangeFox-mirror/bootable-recovery.git";
+      else
+         URL="git@github.com:OrangeFox-mirror/bootable-recovery.git";
+      fi
+   elif [ "$SOURCE" = "gitlab" ]; then
+      if [ "$USE_SSH" = "0" ]; then
+         URL="https://gitlab.com/OrangeFox/bootable/recovery.git";
+      else
+         URL="git@gitlab.com:OrangeFox/bootable/recovery.git";
+      fi
    else
-      URL="git@gitlab.com:OrangeFox/bootable/Recovery.git";
+      echo "-- Invalid source: $SOURCE";
+      return;
    fi
 
    mkdir -p $MANIFEST_DIR/bootable;
@@ -260,19 +285,23 @@ local BRANCH=$FOX_BRANCH;
 clone_fox_vendor() {
 local URL="";
 local BRANCH=$FOX_BRANCH;
-   if [ "$USE_SSH" = "0" ]; then
-      URL="https://gitlab.com/OrangeFox/vendor/recovery.git";
+local SOURCE=${SOURCE:-github};
+   if [ "$SOURCE" = "github" ]; then
+      if [ "$USE_SSH" = "0" ]; then
+         URL="https://github.com/OrangeFox-mirror/vendor-recovery.git";
+      else
+         URL="git@github.com:OrangeFox-mirror/vendor-recovery.git";
+      fi
+   elif [ "$SOURCE" = "gitlab" ]; then
+      if [ "$USE_SSH" = "0" ]; then
+         URL="https://gitlab.com/OrangeFox/vendor/recovery.git";
+      else
+         URL="git@gitlab.com:OrangeFox/vendor/recovery.git";
+      fi
    else
-      URL="git@gitlab.com:OrangeFox/vendor/recovery.git";
-   fi
-
-   echo "-- Preparing for cloning the OrangeFox vendor tree ...";
-   rm -rf $MANIFEST_DIR/vendor/recovery;
-   mkdir -p $MANIFEST_DIR/vendor;
-   [ ! -d $MANIFEST_DIR/vendor ] && {
-      echo "-- Invalid directory: $MANIFEST_DIR/vendor";
+      echo "-- Invalid source: $SOURCE";
       return;
-   }
+   fi
 
    cd $MANIFEST_DIR/vendor;
    echo "-- Pulling the OrangeFox vendor tree ...";
